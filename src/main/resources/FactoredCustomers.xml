@@ -206,8 +206,8 @@
         A centrally-managed set of 3 cold-storage facilities with interruptible consumption.  
         Each facility in turn has 3 capacity generators, each of which draws from an individual 
         probability distribution. The consumption capacity is consistent regardless of the 
-        week of the day. Interrupted capacity is typically shifted over to the next two timeslots.
-        Since the population units are centrally managed, they do use similar 
+        day of the week. Interrupted capacity is typically shifted over to the next two timeslots.
+        Since the population units are centrally managed, they use similar 
         tariff evaluation criteria but the facilities are individually metered so they can be 
         allocated to different tariffs if needed, i.e., the aggregate customer is multicontracting. 
         </description>

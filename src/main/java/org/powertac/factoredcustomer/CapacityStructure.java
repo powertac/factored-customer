@@ -130,7 +130,7 @@ public final class CapacityStructure
         elasticityModelXml = (Element) priceElasticityElement.getElementsByTagName("elasticityModel").item(0);
         elasticityModelType = Enum.valueOf(ElasticityModelType.class, elasticityModelXml.getAttribute("type"));
         
-        Element curtailmentElement = (Element) xml.getElementsByTagName("curtailment").item(0);
+        Element curtailmentElement = (Element) xml.getElementsByTagName("regulation").item(0);
         curtailmentShifts = (curtailmentElement != null) ? 
                 ParserFunctions.parseDoubleArray(curtailmentElement.getAttribute("shifts")) : null;
     }
