@@ -261,6 +261,7 @@ class DefaultUtilityOptimizer implements UtilityOptimizer
                                                     false);
           totalUsageCharge += charge;
         }
+        // TODO - post storage capacity data
         subscription.usePower(currCapacity);
         totalCapacity += currCapacity;
       }

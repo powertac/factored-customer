@@ -158,6 +158,8 @@ class DefaultCapacityOriginator implements CapacityOriginator
               .getTimeForIndex(future).toDateTime(), false);
     forecastCapacity =
       adjustCapacityForWeather(forecastCapacity, weather, false);
+    // TODO adjust for state
+    // TODO forecast future state
     if (Double.isNaN(forecastCapacity))
       throw new Error("Adjusted capacity is NaN for base capacity = "
                       + baseCapacity);
@@ -233,6 +235,7 @@ class DefaultCapacityOriginator implements CapacityOriginator
     // total adjusted capacity
     double adjustedCapacity = baseCapacity;
     if (parentBundle.getPowerType().isInterruptible()) {
+      // TODO - handle regulation
       adjustedCapacity =
         adjustCapacityForCurtailments(timeslot, adjustedCapacity, subscription);
     }
@@ -251,6 +254,7 @@ class DefaultCapacityOriginator implements CapacityOriginator
 
     adjustedCapacity = truncateTo2Decimals(adjustedCapacity);
     actualCapacities.put(timeslot, adjustedCapacity);
+    // TODO - update state?
     log.info(logIdentifier + ": Adjusted capacity for tariff "
              + subscription.getTariff().getId() + " = " + adjustedCapacity);
     return adjustedCapacity;
