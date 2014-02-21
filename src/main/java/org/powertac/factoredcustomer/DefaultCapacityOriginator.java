@@ -65,10 +65,14 @@ class DefaultCapacityOriginator implements CapacityOriginator
     new HashMap<Integer, Double>();
   protected final Map<Integer, Double> actualCapacities =
     new HashMap<Integer, Double>();
+  // simple curtailment
   protected final Map<Integer, Double> curtailedCapacities =
     new HashMap<Integer, Double>();
   protected final Map<Integer, Double> shiftedCurtailments =
     new HashMap<Integer, Double>();
+  // storage data
+  protected final Map<Integer, Double> stateOfCharge =
+      new HashMap<Integer, Double>();
 
   DefaultCapacityOriginator (FactoredCustomerService service,
                              CapacityStructure structure, CapacityBundle bundle)
@@ -80,15 +84,6 @@ class DefaultCapacityOriginator implements CapacityOriginator
     logIdentifier =
       capacityStructure.capacityName.isEmpty()? bundle.getName(): bundle
               .getName() + "#" + capacityStructure.capacityName;
-
-    // timeService = (TimeService)
-    // SpringApplicationContext.getBean("timeService");
-    // timeslotRepo = (TimeslotRepo)
-    // SpringApplicationContext.getBean("timeslotRepo");
-    // weatherReportRepo = (WeatherReportRepo)
-    // SpringApplicationContext.getBean("weatherReportRepo");
-    // weatherForecastRepo = (WeatherForecastRepo)
-    // SpringApplicationContext.getBean("weatherForecastRepo");
 
     if (capacityStructure.baseCapacityType == BaseCapacityType.TIMESERIES) {
       tsGenerator =
@@ -227,8 +222,10 @@ class DefaultCapacityOriginator implements CapacityOriginator
     int timeslot = service.getTimeslotRepo().currentSerialNumber();
 
     double baseCapacity = getBaseCapacity(timeslot);
-    if (Double.isNaN(baseCapacity))
-      throw new Error("Base capacity is NaN!");
+    if (Double.isNaN(baseCapacity)) {
+      log.error("Base capacity is NaN!");
+      baseCapacity = 0.0;
+    }
     logCapacityDetails(logIdentifier + ": Base capacity for timeslot "
                        + timeslot + " = " + baseCapacity);
 
@@ -237,7 +234,7 @@ class DefaultCapacityOriginator implements CapacityOriginator
     if (parentBundle.getPowerType().isInterruptible()) {
       // TODO - handle regulation
       adjustedCapacity =
-        adjustCapacityForCurtailments(timeslot, adjustedCapacity, subscription);
+        adjustCapacityForRegulation(timeslot, adjustedCapacity, subscription);
     }
     adjustedCapacity =
       adjustCapacityForPeriodicSkew(adjustedCapacity, service.getTimeService()
@@ -248,8 +245,9 @@ class DefaultCapacityOriginator implements CapacityOriginator
     adjustedCapacity =
       adjustCapacityForSubscription(timeslot, adjustedCapacity, subscription);
     if (Double.isNaN(adjustedCapacity)) {
-      throw new Error("Adjusted capacity is NaN for base capacity = "
+      log.error("Adjusted capacity is NaN for base capacity = "
                       + baseCapacity);
+      adjustedCapacity = baseCapacity;
     }
 
     adjustedCapacity = truncateTo2Decimals(adjustedCapacity);
@@ -261,24 +259,43 @@ class DefaultCapacityOriginator implements CapacityOriginator
   }
 
   private double
-    adjustCapacityForCurtailments (int timeslot, double capacity,
+    adjustCapacityForRegulation (int timeslot, double capacity,
                                    TariffSubscription subscription)
   {
-    double lastCurtailment = subscription.getCurtailment();
-    if (Math.abs(lastCurtailment) > 0.01) { // != 0
-      curtailedCapacities.put(timeslot - 1, lastCurtailment);
-      if (capacityStructure.curtailmentShifts != null) {
-        for (int i = 0; i < capacityStructure.curtailmentShifts.length; ++i) {
-          double shiftingFactor = capacityStructure.curtailmentShifts[i];
-          double shiftedCapacity = lastCurtailment * shiftingFactor;
-          Double previousShifts = shiftedCurtailments.get(timeslot + i);
-          if (previousShifts == null) {
-            shiftedCurtailments.put(timeslot + i, shiftedCapacity);
-          }
-          else {
-            shiftedCurtailments.put(timeslot + i, previousShifts
-                                                  + shiftedCapacity);
-          }
+    double lastRegulation = subscription.getRegulation();
+    // positive value is up-regulation, negative is down-regulation
+    if ((lastRegulation > 0.01) && !subscription.hasRegulationRate()) {
+      // simple curtailment
+      return adjustCapacityForSimpleCurtailment(timeslot, capacity,
+                                                lastRegulation);
+    }
+    else if ((Math.abs(lastRegulation) > 0.01)
+             && subscription.hasRegulationRate()) {
+      // down-regulation
+      // TODO - interact with CapacityStructure
+      return capacity; // TODO: fix
+    }
+    else {
+      return capacity;
+    }
+  }
+
+  private double adjustCapacityForSimpleCurtailment (int timeslot,
+                                                     double capacity,
+                                                     double lastRegulation)
+  {
+    curtailedCapacities.put(timeslot - 1, lastRegulation);
+    if (capacityStructure.curtailmentShifts != null) {
+      for (int i = 0; i < capacityStructure.curtailmentShifts.length; ++i) {
+        double shiftingFactor = capacityStructure.curtailmentShifts[i];
+        double shiftedCapacity = lastRegulation * shiftingFactor;
+        Double previousShifts = shiftedCurtailments.get(timeslot + i);
+        if (previousShifts == null) {
+          shiftedCurtailments.put(timeslot + i, shiftedCapacity);
+        }
+        else {
+          shiftedCurtailments.put(timeslot + i, previousShifts
+                                                + shiftedCapacity);
         }
       }
     }

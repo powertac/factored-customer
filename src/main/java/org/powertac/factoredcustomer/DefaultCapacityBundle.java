@@ -107,6 +107,7 @@ class DefaultCapacityBundle implements CapacityBundle
         }
       }
     }
+    // TODO - update CustomerInfo with storage info
   }
 
   /** @Override hook **/
