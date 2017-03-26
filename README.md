@@ -1,4 +1,5 @@
-# Power TAC Server Factored Customer Models
+# Discontinued
 
-This module implements a framework that can be used to instantiate a number of statistical models representing different classes of customer populations: consumer vs. producer and residential vs. commercial vs. industrial.
+This repository is no longer maintained separately, but now a part of
+[powertac-server](https://github.com/powertac/powertac-server/).
 
